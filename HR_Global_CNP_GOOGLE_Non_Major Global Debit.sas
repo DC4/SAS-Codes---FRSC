@@ -1,0 +1,503 @@
+
+					*************************************************************************
+							      HR_Global_CNP_GOOGLE_Non_Major Global Debit
+									
+					*************************************************************************;
+					 
+/*PROC DELETE DATA=_ALL_;RUN;*/
+OPTIONS COMPRESS=YES;
+
+LIBNAME CR "C:\Users\1510806\OneDrive - Standard Chartered Bank\Desktop\Jhilam\Falcon 6.4 Monthly Data\Debit";
+LIBNAME INC "C:\Users\1510806\OneDrive - Standard Chartered Bank\Desktop\Jhilam\Daily Data\DB";
+LIBNAME CR1 "C:\Users\1510806\OneDrive - Standard Chartered Bank\Desktop\Jhilam\Consolidated Last 3 Months Data\Oct21_Major\MAJOR_COUNTRIES_DATA";
+
+
+DATA FALT002;
+SET  
+INC.falt002_db_31DEC
+INC.falt002_db_01JAN;
+
+     WHERE TRN_AUTH_POST = "A"  AND DATE1 GE "31DEC2021"D;
+/*AND CRD_CLNT_ID = ("SC_EURONETSG_DB");*/
+     FORMAT TRAN_DATE DATE9. TIME TIME8.;
+     TRAN_DATE = INPUT(SUBSTR(TRN_DT,1,2) || SUBSTR(TRN_DT,4,3) || '20' || SUBSTR(TRN_DT,8,2),DATE9.);
+     ATTRIB AUTH_DTTM FORMAT=DATETIME19.;
+     AUTH_DTTM=DHMS(TRAN_DATE,SUBSTR(TRN_DT,11,2),SUBSTR(TRN_DT,14,2),SUBSTR(TRN_DT,17,2)); 
+     MCC = INPUT(SIC_CD,BEST.);
+/*         ATMONUS=(COMPRESS(MER_ID)||COMPRESS(ACCT_NBR));*/
+/*		 MERCHANTBIN=COMPRESS(MER_ID)||SUBSTR(ACCT_NBR,1,6);*/
+/*         IF AUTH_DTTM GE "26FEB2021:22:15:00"DT;*/
+         TIME = TIMEPART(AUTH_DTTM);
+
+IF SUBSTR(ACCT_NBR,1,6) IN ('411144'
+								'421451'
+								'469626'
+								'470691') AND CRD_CLNT_ID = "SC_SPARROWBD_DB" THEN TRN_AMT_LOCAL = TRN_AMT * 83.60;
+	ELSE TRN_AMT_LOCAL = TRN_AMT;
+
+		IF CRD_CLNT_ID = "SC_EURONETAE_DB" THEN USD = TRN_AMT/3.67;
+			ELSE IF CRD_CLNT_ID = "SC_EURONETMY_DB" THEN USD= TRN_AMT/3.221743;
+		ELSE IF CRD_CLNT_ID = "SC_EURONETID_DB" THEN USD= TRN_AMT/13500;
+		ELSE IF CRD_CLNT_ID = "SC_EURONETIN_DB" THEN USD= TRN_AMT/65;
+		ELSE IF CRD_CLNT_ID = "SC_TANDEMTW_DB" THEN USD= TRN_AMT/30.116853; 
+		ELSE IF CRD_CLNT_ID = "SC_EURONETBH_DB" THEN USD= TRN_AMT/0.377132; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWBW_DB" THEN USD= TRN_AMT/10.2587; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWGH_DB" THEN USD= TRN_AMT/4.42718; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWJO_DB" THEN USD= TRN_AMT/0.708893; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWKE_DB" THEN USD= TRN_AMT/103.824; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWLK_DB" THEN USD= TRN_AMT/153.05; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWNG_DB" THEN USD= TRN_AMT/365.467; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWNP_DB" THEN USD= TRN_AMT/102.69; 
+		ELSE IF CRD_CLNT_ID = "SC_EURONETVN_DB" THEN USD= TRN_AMT/22700; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWZM_DB" THEN USD= TRN_AMT/8.98193; 
+		ELSE IF CRD_CLNT_ID IN ("SC_EURONETBN_DB"  "SC_EURONETSG_DB") THEN USD= TRN_AMT/1.36370; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWBW_DB" THEN USD= TRN_AMT/10.3382; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWGM_DB" THEN USD= TRN_AMT/45.8258; 
+		ELSE IF CRD_CLNT_ID = "SC_EURONETIN_DB" THEN USD= TRN_AMT/65; 
+		ELSE IF CRD_CLNT_ID = "SC_EURONETQA_DB" THEN USD= TRN_AMT/3.64146; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWTZ_DB" THEN USD= TRN_AMT/2240.11; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWUG_DB" THEN USD= TRN_AMT/3603.55; 
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWZW_DB" THEN USD= TRN_AMT/361.900; 
+		ELSE IF CRD_CLNT_ID = "SC_HOGANHK_DB" THEN USD= TRN_AMT/7.8;
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWBD_DB" THEN USD = TRN_AMT_LOCAL/83.60;
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWCI_DB" THEN USD = TRN_AMT/562.55;
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWCM_DB" THEN USD = TRN_AMT/570;
+		ELSE IF CRD_CLNT_ID = "SC_SPARROWSL_DB" THEN USD = TRN_AMT/8300;
+
+RUN;
+
+PROC SORT DATA=FALT002 OUT=FALT002_1 NODUPKEY; BY FI_TRANSACTION_ID; RUN;
+
+PROC SORT DATA=FALT002_1 OUT=FALT002_2 ; BY ACCT_NBR AUTH_DTTM; RUN;
+
+%MACRO UDV_DAILY(CUM_INTERVAL=, CUMULATIVE_CONDITION =, VAR_NAME=);
+DATA FALT002_2;
+SET FALT002_2;
+     BY ACCT_NBR AUTH_DTTM;
+
+    FORMAT TIME_RESET_&VAR_NAME. DATETIME19.;
+
+     RETAIN CUM_COUNT_&VAR_NAME. TIME_RESET_&VAR_NAME. CUM_AMOUNT_&VAR_NAME.;
+
+     IF FIRST.ACCT_NBR THEN DO;
+           TIME_RESET_&VAR_NAME. = 0;
+           CUM_COUNT_&VAR_NAME. = 0;
+           CUM_AMOUNT_&VAR_NAME. = 0;
+     END;
+
+     IF &CUMULATIVE_CONDITION. THEN DO;
+           IF AUTH_DTTM LT (TIME_RESET_&VAR_NAME. + &CUM_INTERVAL.) THEN DO;
+                CUM_COUNT_&VAR_NAME. + 1;
+                CUM_AMOUNT_&VAR_NAME. + TRN_AMT;
+           END;
+           ELSE DO;
+                TIME_RESET_&VAR_NAME. = AUTH_DTTM;
+                CUM_COUNT_&VAR_NAME. = 1;
+                CUM_AMOUNT_&VAR_NAME. = TRN_AMT;
+           END;
+     END;
+RUN;
+%MEND;
+
+%UDV_DAILY
+(
+CUM_INTERVAL = 86400,                                          
+CUMULATIVE_CONDITION = %STR
+(
+     TRN_AUTH_POST = "A" AND 
+     AUTH_DECISION_XCD = "A" AND 
+     TRN_TYP IN ("C" "M" "P") AND 
+     TRN_POS_ENT_CD IN ("E" "K" "G" "") AND 
+	 INDEX(UPCASE(MER_NM), "GOOGLE") AND
+     TRN_AMT > 0
+),
+VAR_NAME = GOOGLE_DAILY
+);
+
+
+DATA TEMP_TXN_DATA;
+    SET FALT002_2;
+	WHERE DATE1 GE "01JAN2021"D;
+IF 
+
+(
+(
+ TRN_AUTH_POST  = "A" AND
+( AUTH_DECISION_XCD  = "A" OR (AUTH_DECISION_XCD = "" AND  DECI_CD_ORIG  = "A")) AND
+ TRN_TYP  in ("C" "M" "P") AND
+ TRN_POS_ENT_CD  IN ("E" "K" "G" "") AND
+ INDEX(UPCASE(MER_NM),"GOOGLE")
+)
+and
+(
+(  CRD_CLNT_ID  = "SC_SPARROWKE_DB" AND CUM_COUNT_GOOGLE_DAILY >= 33 )
+
+OR (  CRD_CLNT_ID  = "SC_EURONETVN_DB" AND CUM_COUNT_GOOGLE_DAILY >= 35 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWGH_DB" AND CUM_COUNT_GOOGLE_DAILY >= 35 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWNG_DB" AND CUM_COUNT_GOOGLE_DAILY >= 35 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWTZ_DB" AND CUM_COUNT_GOOGLE_DAILY >= 15 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWZM_DB" AND CUM_COUNT_GOOGLE_DAILY >= 20 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWZW_DB" AND CUM_COUNT_GOOGLE_DAILY >= 35 )
+
+OR (  CRD_CLNT_ID  = "SC_EURONETBH_DB" AND CUM_COUNT_GOOGLE_DAILY >= 20 )
+
+OR (  CRD_CLNT_ID  = "SC_EURONETBN_DB" AND CUM_COUNT_GOOGLE_DAILY >= 15 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWBW_DB" AND CUM_COUNT_GOOGLE_DAILY >= 20 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWCI_DB" AND CUM_COUNT_GOOGLE_DAILY >= 15 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWCM_DB" AND CUM_COUNT_GOOGLE_DAILY >= 35 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWGM_DB" AND CUM_COUNT_GOOGLE_DAILY >= 15 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWJO_DB" AND CUM_COUNT_GOOGLE_DAILY >= 5 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWLK_DB" AND CUM_COUNT_GOOGLE_DAILY >= 10 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWNP_DB" AND CUM_COUNT_GOOGLE_DAILY >= 35 )
+
+OR (  CRD_CLNT_ID  = "SC_EURONETQA_DB" AND CUM_COUNT_GOOGLE_DAILY >= 35 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWSL_DB" AND CUM_COUNT_GOOGLE_DAILY >= 10 )
+
+OR (  CRD_CLNT_ID  = "SC_SPARROWUG_DB" AND CUM_COUNT_GOOGLE_DAILY >= 35 )
+)
+)
+
+THEN FLAG="Y";
+RUN;
+
+DATA TXN_DATA;
+SET TEMP_TXN_DATA;
+WHERE FLAG = "Y" and date1 GE "01JAN2021"D;
+RUN;
+
+DATA RULE_DATA;
+SET 
+INC.falt003_db_01JAN;
+WHERE UPCASE(RULE_NAME_STRG) IN ('HR_GLOBAL_CNP_GOOGLE_NON_MAJOR') AND
+/*CLIENT_XID = ("SC_EURONETSG_DB") and */
+date1 GE "01JAN2021"D;
+RUN;
+
+PROC SORT DATA = RULE_DATA NODUPKEY; BY RULE_NAME_STRG FI_TRANSACTION_ID; RUN;
+
+PROC FREQ DATA = TXN_DATA;TITLE "HR_Global_CNP_GOOGLE_Non_Major_Test  SAS";
+TABLE CRD_CLNT_ID*DATE1/NOCOL NOROW NOPERCENT NOCUM; RUN; 
+
+PROC FREQ DATA = RULE_DATA; TITLE "HR_Global_CNP_GOOGLE_Non_Major_Test  FALCON";
+TABLE CLIENT_XID*DATE1/NOCOL NOROW NOPERCENT NOCUM; RUN; 
+
+/* Writing Outout to Excel - For Audit*/
+
+ods listing;
+ods excel file='C:\Users\1510806\OneDrive - Standard Chartered Bank\Desktop\SAS\Outputs\HR_Global_CNP_GOOGLE_Non_Major_Test Global Debit.xlsx'
+ options(sheet_interval="NONE");
+ ods excel options(sheet_name="OUTPUT");
+PROC FREQ DATA = TXN_DATA;TITLE "HR_Global_CNP_GOOGLE_Non_Major_Test  SAS";
+TABLE CRD_CLNT_ID*DATE1/NOCOL NOROW NOPERCENT NOCUM; RUN; 
+PROC FREQ DATA = RULE_DATA; TITLE "HR_Global_CNP_GOOGLE_Non_Major_Test  FALCON";
+TABLE CLIENT_XID*DATE1/NOCOL NOROW NOPERCENT NOCUM; RUN;
+ods excel close;
+ods listing close;
+
+PROC EXPORT DATA= TXN_DATA
+outfile= "C:\Users\1510806\OneDrive - Standard Chartered Bank\Desktop\SAS\Outputs\HR_Global_CNP_GOOGLE_Non_Major_Test Global Debit.xlsx"
+dbms=xlsx replace;
+sheet="TXN_DATA";
+run;
+
+PROC EXPORT DATA= RULE_DATA
+outfile= "C:\Users\1510806\OneDrive - Standard Chartered Bank\Desktop\SAS\Outputs\HR_Global_CNP_GOOGLE_Non_Major_Test Global Debit.xlsx"
+dbms=xlsx replace;
+sheet="RULE_DATA";
+run;
+
+
+
+/********************** cross check 6 STEPS ***********************/
+
+/* 1 - Getting txns in SAS not in Falcon */
+/* MER_ID is Name in VIP list Case manager */
+
+PROC SQL;
+CREATE TABLE txn_in_sas_not_in_rule AS 
+SELECT ACCT_NBR, FI_TRANSACTION_ID, MER_ID, CRD_CLNT_ID FROM TXN_DATA where FI_TRANSACTION_ID not in (SELECT distinct(FI_TRANSACTION_ID) FROM 
+RULE_DATA);
+QUIT;
+
+PROC SQL;
+CREATE TABLE txn_in_sas_not_in_rule AS 
+SELECT * FROM TXN_DATA where FI_TRANSACTION_ID not in (SELECT distinct(FI_TRANSACTION_ID) FROM 
+RULE_DATA);
+QUIT;
+
+
+/* 1 - Getting txns in Falcon not in SAS */
+/* MER_ID is Name in VIP list Case manager */
+
+PROC SQL;
+CREATE TABLE txn_in_sas_not_in_rule AS 
+SELECT SCORE_CUSTOMER_ACCOUNT_XID, FI_TRANSACTION_ID, CLIENT_XID FROM RULE_DATA where FI_TRANSACTION_ID not in (SELECT distinct(FI_TRANSACTION_ID) FROM 
+TXN_DATA);
+QUIT;
+
+PROC SQL;
+CREATE TABLE txn_in_sas_not_in_rule AS 
+SELECT * FROM RULE_DATA where FI_TRANSACTION_ID not in (SELECT distinct(FI_TRANSACTION_ID) FROM 
+TXN_DATA);
+QUIT;
+
+
+DATA TXN_CHECK;
+SET 
+FALT002_2;
+WHERE FI_TRANSACTION_ID IN 
+(
+'0261cec98707c143'
+'0c61cec8e2076075'
+);
+RUN;
+
+
+/* 2 - High priority rule check */
+
+DATA OTHER_RULE;
+SET 
+INC.falt003_cr_05jun
+INC.falt003_cr_06jun;
+WHERE FI_TRANSACTION_ID IN 
+(
+
+/********************** cross check 6 STEPS ***********************/
+
+/* 1 - Getting txns in SAS not in Falcon */
+/* MER_ID is Name in VIP list Case manager */
+
+PROC SQL;
+CREATE TABLE txn_in_sas_not_in_rule AS 
+SELECT ACCT_NBR, FI_TRANSACTION_ID, MER_ID, CRD_CLNT_ID FROM TXN_DATA where FI_TRANSACTION_ID not in (SELECT distinct(FI_TRANSACTION_ID) FROM 
+RULE_DATA);
+QUIT;
+
+PROC SQL;
+CREATE TABLE txn_in_sas_not_in_rule AS 
+SELECT * FROM TXN_DATA where FI_TRANSACTION_ID not in (SELECT distinct(FI_TRANSACTION_ID) FROM 
+RULE_DATA);
+QUIT;
+
+
+/* 1 - Getting txns in Falcon not in SAS */
+/* MER_ID is Name in VIP list Case manager */
+
+PROC SQL;
+CREATE TABLE txn_in_sas_not_in_rule AS 
+SELECT SCORE_CUSTOMER_ACCOUNT_XID, FI_TRANSACTION_ID, CLIENT_XID FROM RULE_DATA where FI_TRANSACTION_ID not in (SELECT distinct(FI_TRANSACTION_ID) FROM 
+TXN_DATA);
+QUIT;
+
+PROC SQL;
+CREATE TABLE txn_in_sas_not_in_rule AS 
+SELECT * FROM RULE_DATA where FI_TRANSACTION_ID not in (SELECT distinct(FI_TRANSACTION_ID) FROM 
+TXN_DATA);
+QUIT;
+
+
+DATA TXN_CHECK;
+SET 
+FALT002;
+WHERE FI_TRANSACTION_ID IN 
+(
+'0060cca6d402f4ee',
+'1e60cca61502dc17',
+'2060cca6140444cf'
+);
+RUN;
+
+
+/* 2 - High priority rule check */
+
+DATA OTHER_RULE;
+SET 
+INC.falt003_cr_05jun
+INC.falt003_cr_06jun;
+WHERE FI_TRANSACTION_ID IN 
+(
+'0261cec98707c143'
+'0c61cec8e2076075'
+) and
+UPCASE(RULE_NAME_STRG) not IN ('HR_GLOBAL_MID_MERCHANTNAME');
+RUN;
+
+
+/* 3 - Genuine list check */
+/*
+1. Check for USER_ID as "fal" and LAST_UPDATED_DTTM as before TXN time and ACT_DETAIL as "NOT_FRAUD"
+2. Check for USER_ID as some number other than "fal" and check if ACT_DETAIL as "NOT_FRAUD" then check in HOTLIST
+*/
+
+DATA CASACTN;
+SET 
+INC.casactn_cr_13dec;
+WHERE INDEX(USER_ID,"fal") > 0 and INDEX(UPCASE(ACT_DETAIL),"NOT_FRAUD")> 0;
+RUN;
+
+
+DATA CASACTN_CHK;
+SET 
+INC.casactn_cr_13dec;
+WHERE ACCT_NBR in(
+/*"4058038018985898"*/
+/*"4509360650948611"*/
+/*"5523438414807809"*/
+/*"5523438413017798"*/
+
+"4028743400520388"
+"4028743400531138"
+
+);
+RUN;
+
+DATA CASACTN;
+SET INC.casactn_cr_05jun
+INC.casactn_cr_06jun;
+WHERE ACCT_NBR IN 
+(
+"5523024972177197" /*GBL - Caseaction*/
+"5523024972177197" /*GBL - Caseaction*/
+"4509360641073065" /*High priority rule HK*/
+"5523438412256975" /* VIP Genuine */
+) and date1 ge "05JUN2021"d;
+RUN;
+
+/* 4 - If not solved in previous steps chec those ACCT_NBRs here*/
+/* MER_ID or Name extraction for ACCT_NBS in SAS not in Falcon*/
+
+PROC SQL;
+CREATE TABLE VIP AS 
+SELECT distinct(MER_ID), FI_TRANSACTION_ID FROM Txn_Data where ACCT_NBR in
+(
+'5523438412256975'
+);
+RUN;
+
+/* 5 - Check if the ACCT_NBR is present in VIP list (Case manager)*/
+
+DATA VIP_LIST;
+SET LOOKUP_DATA;
+WHERE
+NAME IN(
+'484767000200403'
+'EP86CJLWQYAQGJM'
+);
+RUN;
+
+
+DATA UDV_Mismatch;
+SET TEMP_TXN_DATA;
+WHERE FI_TRANSACTION_ID IN 
+(
+'0261cec98707c143'
+'0c61cec8e2076075'
+);
+RUN;
+
+PROC EXPORT DATA= UDV_Mismatch
+outfile= "C:\Users\1510806\Desktop\SAS\Outputs\MR_Country_CNP_Google_Facebook_Test BD Credi.xlsx"
+dbms=xlsx replace;
+sheet="UDV_Mismatch";
+run;
+
+/********************** cross check 6 STEPS ***********************/
+
+) and
+UPCASE(RULE_NAME_STRG) not IN ('HR_GLOBAL_MID_MERCHANTNAME');
+RUN;
+
+
+/* 3 - Genuine list check */
+/*
+1. Check for USER_ID as "fal" and LAST_UPDATED_DTTM as before TXN time and ACT_DETAIL as "NOT_FRAUD"
+2. Check for USER_ID as some number other than "fal" and check if ACT_DETAIL as "NOT_FRAUD" then check in HOTLIST
+*/
+
+DATA CASACTN;
+SET 
+INC.casactn_cr_13dec;
+WHERE INDEX(USER_ID,"fal") > 0 and INDEX(UPCASE(ACT_DETAIL),"NOT_FRAUD")> 0;
+RUN;
+
+
+DATA CASACTN_CHK;
+SET 
+INC.casactn_cr_13dec;
+WHERE ACCT_NBR in(
+/*"4058038018985898"*/
+/*"4509360650948611"*/
+/*"5523438414807809"*/
+/*"5523438413017798"*/
+
+"4028743400520388"
+"4028743400531138"
+
+);
+RUN;
+
+DATA CASACTN;
+SET INC.casactn_cr_05jun
+INC.casactn_cr_06jun;
+WHERE ACCT_NBR IN 
+(
+"5523024972177197" /*GBL - Caseaction*/
+"5523024972177197" /*GBL - Caseaction*/
+"4509360641073065" /*High priority rule HK*/
+"5523438412256975" /* VIP Genuine */
+) and date1 ge "05JUN2021"d;
+RUN;
+
+/* 4 - If not solved in previous steps chec those ACCT_NBRs here*/
+/* MER_ID or Name extraction for ACCT_NBS in SAS not in Falcon*/
+
+PROC SQL;
+CREATE TABLE VIP AS 
+SELECT distinct(MER_ID), FI_TRANSACTION_ID FROM Txn_Data where ACCT_NBR in
+(
+'5523438412256975'
+);
+RUN;
+
+/* 5 - Check if the ACCT_NBR is present in VIP list (Case manager)*/
+
+DATA VIP_LIST;
+SET LOOKUP_DATA;
+WHERE
+NAME IN(
+'484767000200403'
+'EP86CJLWQYAQGJM'
+);
+RUN;
+
+
+DATA UDV_Mismatch;
+SET TEMP_TXN_DATA;
+WHERE FI_TRANSACTION_ID IN 
+(
+'0060df0d5a00840e'
+'0060df0d5a038513'
+'0060df0d5a03854d'
+);
+RUN;
+
+PROC EXPORT DATA= UDV_Mismatch
+outfile= "C:\Users\1510806\Desktop\SAS\Outputs\MR_Country_CNP_Google_Facebook_Test BD Credi.xlsx"
+dbms=xlsx replace;
+sheet="UDV_Mismatch";
+run;
+
+/********************** cross check 6 STEPS ***********************/

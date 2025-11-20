@@ -150,7 +150,7 @@ if index (content,'SC_SPARROWSL_DB') then SL = 'Yes';
 /*BD_BLACKLISTED_MERCHANTS|BLACKLISTED_MIDS_ID_DEBIT/OI",CONTENT);*/
 RUN;
 
-proc export data=&CNTY._1 outfile="C:\Users\1510806\OneDrive - Standard Chartered Bank\Desktop\Rule_Details_21OCT.xlsx"
+proc export data=&CNTY._1 outfile="C:\Users\1510806\OneDrive - Standard Chartered Bank\Desktop\Rule_Details_19JAN.xlsx"
 dbms=xlsx replace;SHEET="&CNTY.";run;
 
 

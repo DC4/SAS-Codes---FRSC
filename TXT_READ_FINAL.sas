@@ -12,7 +12,7 @@ INPUT CARDNO1 $1-17 Seq $22-23 Account_1 $24-44 Account_2 $46-60 Account_3 $68-8
 Customer_Name $111-136 Expiry $139-143 Status $148-151;
 filename = "&file.";
 IF cardno1 = "" then delete;
-IF SUBSTR(cardno1,1,4) = "Card" OR SUBSTR(cardno1,1,5) = "Stan" then delete;
+IF SUBSTR(cardno1,1,4) = "Card" OR SUBSTR(cardno1,1,5) = "Stan" then delete;
 if index(cardno1,"/") then cardno = compress(cardno1,"/");
 if index(cardno1,"/") EQ 0 then CARDNO = TRIM(substr(filename,length(filename)-5,6)) || SUBSTR(CARDNO1,1,10);
 RUN;
